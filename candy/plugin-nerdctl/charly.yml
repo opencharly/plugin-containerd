@@ -41,4 +41,3 @@ plugin-nerdctl-skill:
         name: plugin-nerdctl
         family: internals
         owner: plugin-nerdctl
-        description: "The out-of-tree charly ENGINE plugin serving engine:nerdctl (verb:nerdctl / command:nerdctl) — every engine op delegates to container.InvokeEngineOp. Use when working with the engine:nerdctl provider, the plugin-nerdctl candy, or the engine provider-class placement model."
