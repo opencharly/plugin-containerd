@@ -13,11 +13,24 @@
 // NO `cue exp gengotypes` artifact — it is the SERVED documentation/config surface,
 // not a code-generation source.
 //
-// It DOCUMENTS the `engine: nerdctl` word (plus the `verb:` / `command:` convenience words). The engine request/reply envelopes live in the base spec schema (`spec/schema/engine.cue`), so no authored input is declared here.
-#NerdctlPlugin: {
-	// The engine word the plugin serves (the registry key `engine:nerdctl`).
-	engine: "nerdctl"
+// It DOCUMENTS the `engine: containerd` word (plus the `verb:` / `command:`
+// convenience words). The engine request/reply envelopes live in the base spec schema
+// (`spec/schema/engine.cue`), so no authored input is declared here. `nerdctl` is the
+// CLI BINARY the containerd word is driven through (#EngineBinaries), not an engine
+// word; the retired engine spelling is deleted (R5, no alias).
+#ContainerdPlugin: {
+	// The engine WORD the plugin serves (the registry key `engine:containerd`).
+	engine: "containerd"
 
 	// What the plugin does, in one line (the public-docs surface).
 	contract: string & !=""
+
+	// rootful names how this provider implements a rootful start plan: it prefixes
+	// the argv with the capability's `privilege_prefix` (e.g. `sudo -n`), taken from
+	// the spec table, so a rootful request is never silently run as rootless.
+	// `unit_emit` is a pure renderer and its envelope carries no scope field: it
+	// renders a user unit from the `start_argv` it is given. A rootful unit carries
+	// the prefix and `--runtime` only when the caller passes the rootful start-plan
+	// argv; this provider does not re-apply the policy at the unit boundary.
+	rootful: "privilege_prefix"
 }
