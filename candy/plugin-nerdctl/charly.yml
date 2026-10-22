@@ -1,39 +1,49 @@
-# plugin-nerdctl — the out-of-tree charly ENGINE plugin serving `engine:nerdctl`.
+# plugin-nerdctl — the out-of-tree charly ENGINE plugin serving `engine:containerd`.
 #
 # A standalone Go module served over go-plugin gRPC via the charly plugin SDK; the
 # charly loader host-builds ./cmd/serve and connects it OUT-OF-PROCESS. It answers
 # every engine op by delegating to the pure body container.InvokeEngineOp in the
 # spec module — the SAME body the compiled-in engine:podman/engine:docker providers
 # serve — so the engine class has one implementation and two placements.
+#
+# `containerd` is the ENGINE WORD. `nerdctl` is only the CLI binary that drives it
+# (#EngineBinaries maps containerd -> nerdctl); the retired engine spelling is gone
+# (R5, no alias).
 plugin-nerdctl:
     candy:
         description: |
-            The out-of-tree charly ENGINE plugin serving engine:nerdctl (plus the
-            verb:nerdctl / command:nerdctl convenience words). It answers the engine
-            provider-class op envelope (describe / binary / gpu_args / start_plan /
-            unit_emit / network_ensure) by delegating to the pure body
-            container.InvokeEngineOp("nerdctl", …) in the spec module, so the engine
-            class has one implementation served from either placement. A standalone Go
-            module (go.mod + cmd/serve) host-built and connected over go-plugin gRPC.
-            Composes with the layer-nerdctl candy (the packages + rootless
-            containerd/buildkit/CNI stack) to deploy a pod with engine: nerdctl.
+            The out-of-tree charly ENGINE plugin serving engine:containerd (plus the
+            verb:containerd / command:containerd convenience words). containerd is the
+            engine word; nerdctl is the CLI binary named by the CUE-owned #EngineBinaries
+            map, never a literal here. It answers the engine provider-class op envelope
+            (describe / binary / gpu_args / start_plan / unit_emit / network_ensure) by
+            delegating to the pure body container.InvokeEngineOp("containerd", …) in the
+            spec module, so the engine class has one implementation served from either
+            placement. Its start plan always names an OCI runtime handler (nerdctl's
+            unqualified default is runc, the CRI default crun) and prefixes a rootful
+            plan with the capability's privilege_prefix (e.g. sudo -n), so a rootful
+            request is never silently run as rootless; the capability defaults for
+            address and namespace are never re-spelled. A standalone Go module
+            (go.mod + cmd/serve) host-built and connected over go-plugin gRPC. Composes
+            with the layer-nerdctl candy (the packages + rootless
+            containerd/buildkit/CNI stack) to deploy a pod with engine: containerd.
         plugin:
             providers:
-                - engine:nerdctl
-                - verb:nerdctl
-                - command:nerdctl
+                - engine:containerd
+                - verb:containerd
+                - command:containerd
             source: github.com/opencharly/plugin-nerdctl/candy/plugin-nerdctl
         plan:
-            - check: the out-of-tree engine:nerdctl plugin ships a buildable Go module (go.mod + cmd/serve) the host can build + serve out-of-process
-              id: nerdctl-module-present
+            - check: the out-of-tree engine:containerd plugin ships a buildable Go module (go.mod + cmd/serve) the host can build + serve out-of-process
+              id: containerd-module-present
               context:
                 - build
               command: "true"
-            - check: the plugin declares the engine:nerdctl provider word
-              id: nerdctl-provider-declared
+            - check: the plugin declares the engine:containerd provider word
+              id: containerd-provider-declared
               context:
                 - build
-              command: grep -q 'engine:nerdctl' charly.yml
+              command: grep -q 'engine:containerd' charly.yml
 
 # ---- HARNESS SKILL ----
 plugin-nerdctl-skill:

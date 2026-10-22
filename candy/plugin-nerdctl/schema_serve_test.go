@@ -24,8 +24,8 @@ func TestNewMetaServesNonEmptySchema(t *testing.T) {
 	if strings.TrimSpace(caps.GetSchemaCue()) == "" {
 		t.Fatal("Describe served an EMPTY schema_cue; every plugin MUST ship a non-empty CUE schema")
 	}
-	if !strings.Contains(caps.GetSchemaCue(), "#NerdctlPlugin") {
-		t.Fatalf("served schema does not carry #NerdctlPlugin:\n%s", caps.GetSchemaCue())
+	if !strings.Contains(caps.GetSchemaCue(), "#ContainerdPlugin") {
+		t.Fatalf("served schema does not carry #ContainerdPlugin:\n%s", caps.GetSchemaCue())
 	}
 }
 
