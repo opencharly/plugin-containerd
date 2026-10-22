@@ -17,7 +17,8 @@ Canonical files:
 - `candy/plugin-nerdctl/` — the Go source: `plugin.go` (provider + meta + the
   containerd start-plan policy), `schema/plugin.cue`, `cmd/serve/main.go`.
 - `.agents/skills/plugin-nerdctl/SKILL.md` — the skill body, the one canonical
-  base the marketplace projects `/charly-internals:plugin-nerdctl` from.
+  base the corpus projects `/charly-internals:plugin-nerdctl` from. The candy's
+  `plugin-nerdctl-skill:` entity is the owner registration paired with that body.
 - `README.md` — user overview only; never agent guidance.
 
 The repo carries only the `tag-on-merge` caller (`.github/workflows/`); the
@@ -60,9 +61,11 @@ org-wide required workflow is what gates the merge.
 - Keep `nerdctl` out of the engine vocabulary. It is the CLI binary named by
   `spec.EngineBinaries["containerd"]`; a second engine spelling is a cutover
   regression.
-- Keep the `plugin-nerdctl-skill:` entity and
-  `.agents/skills/plugin-nerdctl/SKILL.md` in step with any provider-surface
-  change — they are the projected source for the skill.
+- Keep `.agents/skills/plugin-nerdctl/SKILL.md` in step with any provider-surface
+  change: it is the skill BODY, the one canonical base the corpus reader resolves.
+  The candy's `plugin-nerdctl-skill:` entity is the owner registration the reader
+  pairs with that body (name/family/owner only — it carries no body); update its
+  metadata only when the name/family/owner changes.
 
 ## Landing
 

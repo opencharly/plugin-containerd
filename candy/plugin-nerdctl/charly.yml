@@ -23,7 +23,11 @@ plugin-nerdctl:
             unqualified default is runc, the CRI default crun) and prefixes a rootful
             plan with the capability's privilege_prefix (e.g. sudo -n), so a rootful
             request is never silently run as rootless; the capability defaults for
-            address and namespace are never re-spelled. A standalone Go module
+            address and namespace are never re-spelled. The unit_emit op is a pure
+            renderer and its envelope carries no scope field: a rootful unit is a user
+            unit whose ExecStart is the (prefixed, --runtime-bearing) start-plan argv
+            the caller supplies, and this provider does not re-apply the policy at the
+            unit boundary. A standalone Go module
             (go.mod + cmd/serve) host-built and connected over go-plugin gRPC. Composes
             with the layer-nerdctl candy (the packages + rootless
             containerd/buildkit/CNI stack) to deploy a pod with engine: containerd.
@@ -46,6 +50,9 @@ plugin-nerdctl:
               command: grep -q 'engine:containerd' charly.yml
 
 # ---- HARNESS SKILL ----
+# Owner registration for the skill body at .agents/skills/plugin-nerdctl/SKILL.md,
+# the one canonical base the corpus reader resolves. This entity names the owner
+# (name/family/owner) and carries no body; the body is the file at the repo root.
 plugin-nerdctl-skill:
     skill:
         name: plugin-nerdctl

@@ -29,6 +29,11 @@ capability's `privilege_prefix` (e.g. `sudo -n`) instead of being treated as
 rootless. The capability defaults for `address` / `namespace` are never
 re-spelled; an override rides `extra_args`.
 
+`unit_emit` is a pure renderer and its envelope carries no scope field: a
+rootful unit is a user unit whose `ExecStart` is the (prefixed,
+`--runtime`-bearing) start-plan argv the caller supplies. This provider does not
+re-apply the policy at the unit boundary.
+
 Composes with the `layer-nerdctl` candy (the packages + rootless
 containerd/buildkit/CNI stack) to deploy a pod with `engine: containerd`.
 
@@ -52,8 +57,10 @@ engine: containerd
 - `candy/plugin-nerdctl/` — the plugin module: `plugin.go` (provider + meta +
   the containerd start-plan policy), `schema/plugin.cue`, and
   `cmd/serve/main.go`.
-- `.agents/skills/plugin-nerdctl/SKILL.md` — the skill body the marketplace
-  projects `/charly-internals:plugin-nerdctl` from.
+- `.agents/skills/plugin-nerdctl/SKILL.md` — the skill body, the one canonical
+  base the corpus projects `/charly-internals:plugin-nerdctl` from. The candy's
+  `plugin-nerdctl-skill:` entity is the owner registration paired with that body
+  (name/family/owner only); it carries no body.
 - `charly.yml` — the root project manifest (`discover: box` + `discover: candy`).
 
 ## Related

@@ -183,6 +183,9 @@ func TestRootfulPlanUsesPrivilegePrefix(t *testing.T) {
 	if len(prefix) == 0 {
 		t.Fatalf("%q declares supports_rootful with an empty privilege_prefix", engineWord)
 	}
+	if len(rootful.Argv) < len(prefix)+1 {
+		t.Fatalf("rootful argv %v is shorter than the privilege prefix %v plus the binary", rootful.Argv, prefix)
+	}
 	if !reflect.DeepEqual(rootful.Argv[:len(prefix)], prefix) {
 		t.Fatalf("rootful argv prefix = %v, want the capability privilege_prefix %v", rootful.Argv[:len(prefix)], prefix)
 	}
@@ -321,11 +324,111 @@ func TestOutOfProcessServeRoundTrip(t *testing.T) {
 	if got := flagValue(plan.Argv, "--runtime"); got != wantDefaultRuntime {
 		t.Fatalf("out-of-process --runtime = %q, want %q (argv %v)", got, wantDefaultRuntime, plan.Argv)
 	}
+
+	// unit_emit across the same process boundary: the renderer carries the argv
+	// it is given, including --runtime, into ExecStart.
+	unitParams, _ := json.Marshal(spec.EngineUnitRequest{Name: "charly-e2e", RunMode: "systemd-unit", StartArgv: plan.Argv})
+	unitRep, err := conn.Provider.Invoke(ctx, &pb.InvokeRequest{
+		Reserved:   engineWord,
+		Op:         ops.OpEngineUnitEmit,
+		ParamsJson: unitParams,
+	})
+	if err != nil {
+		t.Fatalf("out-of-process unit_emit: %v", err)
+	}
+	var unitReply spec.EngineUnitReply
+	if err := json.Unmarshal(unitRep.GetResultJson(), &unitReply); err != nil {
+		t.Fatalf("decode out-of-process unit_emit: %v", err)
+	}
+	if !strings.Contains(unitReply.Files["charly-charly-e2e.service"], "--runtime "+wantDefaultRuntime) {
+		t.Fatalf("out-of-process unit_emit did not carry --runtime %s: %+v", wantDefaultRuntime, unitReply)
+	}
 }
 
 // wantDefaultRuntime is the handler the plan MUST name when the caller names
 // none: nerdctl's unqualified default is runc, while the CRI default is crun.
 const wantDefaultRuntime = "crun"
+
+// invokeUnitEmit calls the provider's engine unit_emit op and decodes the reply.
+func invokeUnitEmit(t *testing.T, req spec.EngineUnitRequest) spec.EngineUnitReply {
+	t.Helper()
+	params, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal unit_emit request: %v", err)
+	}
+	reply, err := NewProvider().Invoke(context.Background(), &pb.InvokeRequest{
+		Reserved:   engineWord,
+		Op:         ops.OpEngineUnitEmit,
+		ParamsJson: params,
+	})
+	if err != nil {
+		t.Fatalf("unit_emit invoke: %v", err)
+	}
+	var out spec.EngineUnitReply
+	if err := json.Unmarshal(reply.GetResultJson(), &out); err != nil {
+		t.Fatalf("decode unit_emit reply: %v", err)
+	}
+	if out.Error != "" {
+		t.Fatalf("unit_emit reply error: %s", out.Error)
+	}
+	return out
+}
+
+// TestUnitEmitRendersTheSuppliedArgv pins the unit_emit boundary truthfully.
+// The op is a PURE RENDERER: the spec body renders whatever start_argv it is
+// given, and the envelope carries no scope/rootful field. So a rootful unit
+// carries the privilege prefix and --runtime only because the caller passes the
+// rootful start-plan argv; this provider does not re-apply the policy at the
+// unit boundary (and the test proves it does not, with an unprefixed control).
+func TestUnitEmitRendersTheSuppliedArgv(t *testing.T) {
+	capability, ok := container.EngineCapabilityFor(engineWord)
+	if !ok {
+		t.Fatalf("no capability row for %q", engineWord)
+	}
+	prefix := strings.Fields(capability.PrivilegePrefix)
+	plan := invokeStartPlan(t, spec.EngineStartPlanRequest{Name: "charly-test", Image: "img", Rootful: true})
+	if len(plan.Argv) < len(prefix)+1 {
+		t.Fatalf("rootful argv %v is shorter than the privilege prefix %v plus the binary", plan.Argv, prefix)
+	}
+
+	reply := invokeUnitEmit(t, spec.EngineUnitRequest{
+		Name:      "charly-test",
+		RunMode:   string(capability.RunMode),
+		StartArgv: plan.Argv,
+		StopArgv:  append(append([]string{}, prefix...), capability.Binary, "rm", "-f", "charly-test"),
+	})
+	unit := reply.Files["charly-charly-test.service"]
+	if unit == "" {
+		t.Fatalf("unit_emit returned no unit file: %+v", reply)
+	}
+	if want := "ExecStart=" + strings.Join(plan.Argv, " "); !strings.Contains(unit, want) {
+		t.Errorf("rendered unit does not carry the start-plan argv (%q):\n%s", want, unit)
+	}
+	if want := "ExecStart=" + strings.Join(prefix, " ") + " " + capability.Binary + " run"; !strings.Contains(unit, want) {
+		t.Errorf("rendered rootful unit does not start with the privilege prefix (%q):\n%s", want, unit)
+	}
+	if !strings.Contains(unit, "--runtime "+wantDefaultRuntime) {
+		t.Errorf("rendered rootful unit does not carry --runtime %s:\n%s", wantDefaultRuntime, unit)
+	}
+	if !strings.Contains(unit, "WantedBy=default.target") {
+		t.Errorf("rendered unit is not the user unit the envelope's renderer produces:\n%s", unit)
+	}
+
+	// Control: the provider does NOT re-apply the policy at the unit boundary.
+	// An unprefixed argv is rendered exactly as supplied, with no --runtime added.
+	bare := invokeUnitEmit(t, spec.EngineUnitRequest{
+		Name:      "charly-bare",
+		RunMode:   string(capability.RunMode),
+		StartArgv: []string{capability.Binary, "run", "img"},
+	})
+	bareUnit := bare.Files["charly-charly-bare.service"]
+	if want := "ExecStart=" + capability.Binary + " run img"; !strings.Contains(bareUnit, want) {
+		t.Errorf("unit_emit did not render the supplied argv (%q):\n%s", want, bareUnit)
+	}
+	if strings.Contains(bareUnit, "--runtime") {
+		t.Errorf("unit_emit re-applied the runtime policy at the unit boundary:\n%s", bareUnit)
+	}
+}
 
 // --- small argv helpers (test-local) ---
 

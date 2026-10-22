@@ -42,9 +42,11 @@ The one provider-specific policy is applied to `start_plan`:
   (validated against the capability's `runtime_handlers`) so `--runtime` is
   always emitted.
 - **Rootful is not silently rootless.** A rootful plan gets the capability's
-  `privilege_prefix` (e.g. `sudo -n`) as an argv prefix, taken from data. The
-  `unit_emit` envelope carries no scope field, so the rendered unit stays a user
-  unit whose `ExecStart` carries that prefixed argv.
+  `privilege_prefix` (e.g. `sudo -n`) as an argv prefix, taken from data.
+  `unit_emit` is a pure renderer and its envelope carries no scope field: it
+  renders a user unit from the `start_argv` it is given. A rootful unit carries
+  the prefix and `--runtime` only when the caller passes the rootful start-plan
+  argv; the provider does not re-apply the policy at the unit boundary.
 - **Defaults are not re-spelled.** No `--address` / `--namespace` is emitted for
   the capability defaults; a caller's override rides `extra_args`.
 
