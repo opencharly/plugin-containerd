@@ -6,8 +6,8 @@
 package main
 
 import (
-	nerdctl "github.com/opencharly/plugin-nerdctl/candy/plugin-nerdctl"
+	containerd "github.com/opencharly/plugin-containerd/candy/plugin-containerd"
 	"github.com/opencharly/sdk"
 )
 
-func main() { sdk.Serve(nerdctl.NewProvider(), nerdctl.NewMeta()) }
+func main() { sdk.Serve(containerd.NewProvider(), containerd.NewMeta()) }

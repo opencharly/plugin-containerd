@@ -1,4 +1,4 @@
-# plugin-nerdctl
+# plugin-containerd
 
 The out-of-tree charly ENGINE plugin serving `engine:containerd` — the containerd
 engine backend for OpenCharly pods, plus the `verb:containerd` /
@@ -20,7 +20,7 @@ class has one implementation and two placements.
 | Capability | Surface |
 |---|---|
 | `engine:containerd` | the engine provider-class op envelope: `describe` / `binary` / `gpu_args` / `start_plan` / `unit_emit` / `network_ensure` |
-| `verb:containerd` | the `containerd:` convenience verb |
+| `verb:containerd` | the read-only `containerd:` check verb: `info` / `runtimes` / `cdi_devices` / `criu_preflight` / `krun_guest` / `image` |
 | `command:containerd` | the `charly containerd` convenience command |
 
 The start plan always names an OCI runtime handler (nerdctl's unqualified default
@@ -42,7 +42,7 @@ containerd/buildkit/CNI stack) to deploy a pod with `engine: containerd`.
 Compose the plugin candy alongside the layer candy in a box's `candy:` list:
 
 ```yaml
-- '@github.com/opencharly/plugin-nerdctl/candy/plugin-nerdctl:<tag>'
+- '@github.com/opencharly/plugin-containerd/candy/plugin-containerd:<tag>'
 - '@github.com/opencharly/layer-nerdctl/candy/layer-nerdctl:<tag>'
 ```
 
@@ -54,18 +54,18 @@ engine: containerd
 
 ## Layout
 
-- `candy/plugin-nerdctl/` — the plugin module: `plugin.go` (provider + meta +
-  the containerd start-plan policy), `schema/plugin.cue`, and
-  `cmd/serve/main.go`.
-- `.agents/skills/plugin-nerdctl/SKILL.md` — the skill body, the one canonical
-  base the corpus projects `/charly-internals:plugin-nerdctl` from. The candy's
-  `plugin-nerdctl-skill:` entity is the owner registration paired with that body
+- `candy/plugin-containerd/` — the plugin module: `plugin.go` (provider + meta +
+  the containerd start-plan policy), `verb.go` (the read-only `containerd:` check
+  verbs), `schema/plugin.cue`, `params/` (generated), and `cmd/serve/main.go`.
+- `.agents/skills/plugin-containerd/SKILL.md` — the skill body, the one canonical
+  base the corpus projects `/charly-internals:plugin-containerd` from. The candy's
+  `plugin-containerd-skill:` entity is the owner registration paired with that body
   (name/family/owner only); it carries no body.
 - `charly.yml` — the root project manifest (`discover: box` + `discover: candy`).
 
 ## Related
 
-- Owning skill: `/charly-internals:plugin-nerdctl` — the engine:containerd
+- Owning skill: `/charly-internals:plugin-containerd` — the engine:containerd
   provider reference (projected from this repo's skill body).
 - `/charly-internals:plugin` — the plugin/provider model and placement.
 - [`opencharly/charly`](https://github.com/opencharly/charly) — the charly CLI.

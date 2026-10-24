@@ -1,4 +1,4 @@
-package nerdctl
+package containerd
 
 // containerd_engine_test.go — the engine-word cutover contract.
 //

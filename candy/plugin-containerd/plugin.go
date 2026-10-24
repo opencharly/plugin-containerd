@@ -25,7 +25,7 @@
 // charly in-process when listed in compiled_plugins, or cmd/serve serves them
 // OUT-OF-PROCESS over go-plugin gRPC when they are not — placement is invisible
 // above the registry.
-package nerdctl
+package containerd
 
 import (
 	"context"
@@ -64,14 +64,16 @@ func NewProvider() pb.ProviderServer { return &provider{} }
 
 // NewMeta advertises the engine:containerd capability (empty InputDef — the engine
 // class carries no authored plugin_input; its envelopes live in the base
-// schema/spec) plus the verb/command convenience words, together with the
-// plugin's OWN self-contained, package-less CUE schema (schema/plugin.cue) served
-// over Describe: there is NO schema-less plugin.
+// schema/spec), the verb:containerd READ-ONLY check verb (its typed input is
+// #ContainerdInput, with `method` as the PRIMARY field so `containerd: info`
+// desugars to {method: "info"}), and the command convenience word — together with
+// the plugin's OWN self-contained, package-less CUE schema (schema/plugin.cue)
+// served over Describe: there is NO schema-less plugin.
 func NewMeta() pb.PluginMetaServer {
 	return sdk.NewMeta(calver,
 		[]sdk.ProvidedCapability{
 			{Class: "engine", Word: engineWord, InputDef: ""},
-			{Class: "verb", Word: engineWord, InputDef: ""},
+			{Class: "verb", Word: engineWord, InputDef: "#ContainerdInput", Primary: "method"},
 			{Class: "command", Word: engineWord, InputDef: ""},
 		},
 		schemaFS)
@@ -84,7 +86,14 @@ type provider struct{ pb.UnimplementedProviderServer }
 // containerd row's own policy (an always-named runtime handler and the rootful
 // privilege prefix); every other op is a direct delegation. The verb/command
 // words serve the same envelopes.
-func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeReply, error) {
+func (provider) Invoke(ctx context.Context, req *pb.InvokeRequest) (*pb.InvokeReply, error) {
+	// The verb class is the `containerd:` READ-ONLY check verb (W3.9) — a
+	// different contract from the engine op envelope, so it branches BEFORE the
+	// engine dispatch. The host dispatches a check step as class=verb, op=run,
+	// with the full #Op as params and the CheckEnv snapshot as env.
+	if req.GetClass() == "verb" && req.GetOp() == ops.OpRun {
+		return invokeContainerdVerb(ctx, req)
+	}
 	op := req.GetOp()
 	params := json.RawMessage(req.GetParamsJson())
 	var (
@@ -97,7 +106,7 @@ func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeRepl
 		out, err = container.InvokeEngineOp(engineWord, op, params)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("plugin-nerdctl: engine:%s op %q: %w", engineWord, op, err)
+		return nil, fmt.Errorf("plugin-containerd: engine:%s op %q: %w", engineWord, op, err)
 	}
 	return &pb.InvokeReply{ResultJson: out}, nil
 }
