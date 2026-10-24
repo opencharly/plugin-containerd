@@ -122,6 +122,32 @@ func TestVerbRuntimesListsDeclaredHandlers(t *testing.T) {
 	}
 }
 
+// TestVerbRuntimesIsOrderIndependent pins that the handler report is the SORTED
+// UNION of every runtimes map, so neither Go's randomized map iteration nor a
+// document carrying two runtimes maps can change (or empty) the answer.
+func TestVerbRuntimesIsOrderIndependent(t *testing.T) {
+	a := map[string]any{"config": map[string]any{
+		"containerd": map[string]any{"runtimes": map[string]any{"krun": map[string]any{}, "crun": map[string]any{}}},
+		"legacy":     map[string]any{"runtimes": map[string]any{"runc": map[string]any{}}},
+	}}
+	b := map[string]any{"config": map[string]any{
+		"legacy":     map[string]any{"runtimes": map[string]any{"runc": map[string]any{}}},
+		"containerd": map[string]any{"runtimes": map[string]any{"crun": map[string]any{}, "krun": map[string]any{}}},
+	}}
+	const want = "crun,krun,runc"
+	for i := 0; i < 20; i++ {
+		if got := strings.Join(runtimesFromCRIConfig(a), ","); got != want {
+			t.Fatalf("run %d: handlers = %q, want %q", i, got, want)
+		}
+		if got := strings.Join(runtimesFromCRIConfig(b), ","); got != want {
+			t.Fatalf("run %d (reordered doc): handlers = %q, want %q", i, got, want)
+		}
+	}
+	if got := runtimesFromCRIConfig(map[string]any{"config": map[string]any{}}); len(got) != 0 {
+		t.Fatalf("no runtimes map must yield no handlers, got %v", got)
+	}
+}
+
 // TestVerbCDIDevicesReadsClientSpecDirs pins that the verb reads the CLIENT's
 // spec directories (default /etc/cdi + /var/run/cdi, overridable), not a
 // server-side config, and that a malformed spec FAILS instead of reading as "no

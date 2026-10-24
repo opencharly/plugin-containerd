@@ -284,42 +284,50 @@ func verbRuntimes(ctx context.Context, ex venueExecutor) (string, string, error)
 	if len(handlers) == 0 {
 		return "", "", errors.New("crictl info reported no config runtimes map (no runtime handler declared)")
 	}
-	sort.Strings(handlers)
 	out, err := marshal(runtimesReport{Runtimes: handlers})
 	return out, "", err
 }
 
-// runtimesFromCRIConfig walks the crictl info document for the first object-valued
-// "runtimes" key and returns its handler names. cri-tools has nested the map under
-// different config paths across releases; walking is stable across all of them,
-// and a hit is never invented from a similarly-named scalar.
+// runtimesFromCRIConfig returns the SORTED union of every object-valued "runtimes"
+// map in the crictl info document. cri-tools has nested the map under different
+// config paths across releases; walking is stable across all of them, and a hit is
+// never invented from a similarly-named scalar.
+//
+// The union (rather than the first hit) is deliberate: Go map iteration is
+// randomized, so "first" would make a document carrying two runtimes maps
+// non-deterministic. Collecting all names and sorting makes the answer independent
+// of both map order and of how many maps cri-tools nests.
 func runtimesFromCRIConfig(v any) []string {
+	set := make(map[string]bool)
+	collectRuntimes(v, set)
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// collectRuntimes accumulates every handler name under any object-valued
+// "runtimes" key into set.
+func collectRuntimes(v any, set map[string]bool) {
 	switch node := v.(type) {
 	case map[string]any:
 		if raw, ok := node["runtimes"]; ok {
 			if m, ok := raw.(map[string]any); ok {
-				names := make([]string, 0, len(m))
 				for name := range m {
-					names = append(names, name)
-				}
-				if len(names) > 0 {
-					return names
+					set[name] = true
 				}
 			}
 		}
 		for _, child := range node {
-			if got := runtimesFromCRIConfig(child); len(got) > 0 {
-				return got
-			}
+			collectRuntimes(child, set)
 		}
 	case []any:
 		for _, child := range node {
-			if got := runtimesFromCRIConfig(child); len(got) > 0 {
-				return got
-			}
+			collectRuntimes(child, set)
 		}
 	}
-	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -541,13 +549,10 @@ func verbImage(ctx context.Context, ex venueExecutor, in *params.ContainerdInput
 		return "", fmt.Errorf("image %s is not present in namespace %s: %s", in.Image, ns, firstLine(stderr+stdout))
 	}
 	var found []struct {
-		ID         string   `json:"Id"`
-		RepoTags   []string `json:"RepoTags"`
-		Arch       string   `json:"Architecture"`
-		OS         string   `json:"Os"`
-		Descriptor struct {
-			Digest string `json:"digest"`
-		} `json:"Descriptor"`
+		ID       string   `json:"Id"`
+		RepoTags []string `json:"RepoTags"`
+		Arch     string   `json:"Architecture"`
+		OS       string   `json:"Os"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &found); err != nil {
 		return "", fmt.Errorf("parse nerdctl image inspect: %w", err)

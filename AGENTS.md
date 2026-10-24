@@ -48,6 +48,8 @@ org-wide required workflow is what gates the merge.
   `image`/`krun_guest` methods); without it the arm skips visibly.
 - `go generate ./params` in `candy/plugin-containerd/` — regenerate
   `params/cue_types_gen.go` from `schema/plugin.cue`; a second run is a no-op.
+  This is the one DEV-TIME step that needs the `cue` binary (invoked by
+  `params/gen.sh`); build/test/`box validate` need only `go` and `charly`.
 - `charly box validate` at the repo root — the structural check (the candy +
   `plugin:` block, CUE schema).
 - The merge gate is the **org-wide** `charly/pr-validator` (required check
