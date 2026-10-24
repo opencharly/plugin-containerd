@@ -1,4 +1,4 @@
-# plugin-nerdctl — the out-of-tree charly ENGINE plugin serving `engine:containerd`.
+# plugin-containerd — the out-of-tree charly ENGINE plugin serving `engine:containerd`.
 #
 # A standalone Go module served over go-plugin gRPC via the charly plugin SDK; the
 # charly loader host-builds ./cmd/serve and connects it OUT-OF-PROCESS. It answers
@@ -9,7 +9,7 @@
 # `containerd` is the ENGINE WORD. `nerdctl` is only the CLI binary that drives it
 # (#EngineBinaries maps containerd -> nerdctl); the retired engine spelling is gone
 # (R5, no alias).
-plugin-nerdctl:
+plugin-containerd:
     candy:
         description: |
             The out-of-tree charly ENGINE plugin serving engine:containerd (plus the
@@ -27,7 +27,15 @@ plugin-nerdctl:
             renderer and its envelope carries no scope field: a rootful unit is a user
             unit whose ExecStart is the (prefixed, --runtime-bearing) start-plan argv
             the caller supplies, and this provider does not re-apply the policy at the
-            unit boundary. A standalone Go module
+            unit boundary. The verb:containerd word additionally serves the READ-ONLY
+            check verbs (W3.9), each able to FAIL on a defect nothing else catches:
+            info (daemon id + mode from nerdctl info SecurityOptions — Plugins is never
+            a mode source), runtimes (the declared CRI handlers via crictl info),
+            cdi_devices (the CLIENT's CDI spec dirs), criu_preflight (rc AND the
+            seccomp_suspend line; --extra is never used), krun_guest (one throwaway
+            probe guest: kernel + CPU features) and image (present in a named
+            namespace). A capability the venue lacks is a visible skip naming the
+            mechanism, never a silent pass. A standalone Go module
             (go.mod + cmd/serve) host-built and connected over go-plugin gRPC. Composes
             with the layer-nerdctl candy (the packages + rootless
             containerd/buildkit/CNI stack) to deploy a pod with engine: containerd.
@@ -36,7 +44,9 @@ plugin-nerdctl:
                 - engine:containerd
                 - verb:containerd
                 - command:containerd
-            source: github.com/opencharly/plugin-nerdctl/candy/plugin-nerdctl
+            source: github.com/opencharly/plugin-containerd/candy/plugin-containerd
+            primary:
+                containerd: method
         plan:
             - check: the out-of-tree engine:containerd plugin ships a buildable Go module (go.mod + cmd/serve) the host can build + serve out-of-process
               id: containerd-module-present
@@ -48,13 +58,18 @@ plugin-nerdctl:
               context:
                 - build
               command: grep -q 'engine:containerd' charly.yml
+            - check: the served schema declares the typed verb:containerd input and its full method set
+              id: containerd-check-verbs-declared
+              context:
+                - build
+              command: grep -q '#ContainerdInput' schema/plugin.cue && grep -q 'criu_preflight' schema/plugin.cue && grep -q 'krun_guest' schema/plugin.cue
 
 # ---- HARNESS SKILL ----
-# Owner registration for the skill body at .agents/skills/plugin-nerdctl/SKILL.md,
+# Owner registration for the skill body at .agents/skills/plugin-containerd/SKILL.md,
 # the one canonical base the corpus reader resolves. This entity names the owner
 # (name/family/owner) and carries no body; the body is the file at the repo root.
-plugin-nerdctl-skill:
+plugin-containerd-skill:
     skill:
-        name: plugin-nerdctl
+        name: plugin-containerd
         family: internals
-        owner: plugin-nerdctl
+        owner: plugin-containerd

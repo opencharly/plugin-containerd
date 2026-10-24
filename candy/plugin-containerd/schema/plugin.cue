@@ -1,0 +1,69 @@
+// plugin-containerd's OWN self-contained CUE schema — the SINGLE SOURCE for this plugin's
+// served declaration surface (there is no schema-less plugin: every plugin ships a
+// non-empty schema over Describe).
+//
+// SELF-CONTAINED and PACKAGE-LESS: it references no base def and carries no package
+// clause, so it compiles STANDALONE — the property the SDK's serve-side compile needs
+// and the property that lets the host splice `base ++ plugin` at the load gate
+// (registerPluginUnitSchema); a self-contained schema that will not splice is a LOUD
+// load failure.
+//
+// GO CONSUMER: #ContainerdInput is the typed plugin_input of the `containerd:`
+// check verb and generates ../params/cue_types_gen.go (params/gen.sh). #ContainerdPlugin
+// is the served documentation surface only.
+//
+// It DOCUMENTS the `engine: containerd` word (plus the `verb:` / `command:`
+// convenience words) and the check verb's input. The engine request/reply envelopes
+// live in the base spec schema (`spec/schema/engine.cue`). `nerdctl` is the CLI BINARY
+// the containerd word is driven through (#EngineBinaries), not an engine word; the
+// retired engine spelling is deleted (R5, no alias).
+#ContainerdPlugin: {
+	// The engine WORD the plugin serves (the registry key `engine:containerd`).
+	engine: "containerd"
+
+	// What the plugin does, in one line (the public-docs surface).
+	contract: string & !=""
+
+	// rootful names how this provider implements a rootful start plan: it prefixes
+	// the argv with the capability's `privilege_prefix` (e.g. `sudo -n`), taken from
+	// the spec table, so a rootful request is never silently run as rootless.
+	// `unit_emit` is a pure renderer and its envelope carries no scope field: it
+	// renders a user unit from the `start_argv` it is given. A rootful unit carries
+	// the prefix and `--runtime` only when the caller passes the rootful start-plan
+	// argv; this provider does not re-apply the policy at the unit boundary.
+	rootful: "privilege_prefix"
+}
+
+// #ContainerdInput is the `verb:containerd` check verb's plugin_input: the method
+// name plus its method-exclusive modifiers. The verb's PRIMARY input field is
+// `method`, so `containerd: info` desugars to {method: "info"}.
+//
+// Every method is READ-ONLY over the venue except krun_guest, which boots ONE
+// throwaway probe guest (`--rm`) to read the guest kernel and CPU features. A
+// method reports what it measured; a capability the venue does not have is a
+// VISIBLE skip naming the mechanism (crictl/criu absent, /dev/kvm absent, a
+// runtime handler not declared), never a silent pass.
+#ContainerdInput: {
+	// method — the containerd assertion to run.
+	method: "info" | "runtimes" | "cdi_devices" | "criu_preflight" | "krun_guest" | "image"
+
+	// address — the containerd gRPC address (nerdctl --address). Empty uses the
+	// venue's default.
+	address?: string
+
+	// namespace — the containerd namespace (nerdctl --namespace). Empty uses the
+	// venue's default ("default" for nerdctl).
+	namespace?: string
+
+	// image — method:image / method:krun_guest — the image reference to assert
+	// present in the namespace, or the probe image to boot.
+	image?: string
+
+	// runtime — method:krun_guest — the OCI runtime handler the probe guest boots
+	// with (default "krun").
+	runtime?: string
+
+	// spec_dirs — method:cdi_devices — the CLIENT's CDI spec directories. Defaults
+	// to nerdctl's own defaults: /etc/cdi and /var/run/cdi.
+	spec_dirs?: [...string]
+}

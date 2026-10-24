@@ -1,4 +1,4 @@
-module github.com/opencharly/plugin-nerdctl/candy/plugin-nerdctl
+module github.com/opencharly/plugin-containerd/candy/plugin-containerd
 
 go 1.26.8
 
@@ -7,6 +7,7 @@ require (
 	github.com/hashicorp/go-plugin v1.8.0
 	github.com/opencharly/sdk v0.2026294.1520
 	github.com/opencharly/spec v0.2026295.1243
+	go.yaml.in/yaml/v3 v3.0.5
 )
 
 require (
@@ -26,7 +27,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20260217160748-a481f6a22f94 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

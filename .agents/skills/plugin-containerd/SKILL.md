@@ -1,13 +1,13 @@
 ---
-name: plugin-nerdctl
+name: plugin-containerd
 description: The out-of-tree charly ENGINE plugin serving engine:containerd (verb:containerd
   / command:containerd) — every engine op delegates to container.InvokeEngineOp. `containerd`
   is the engine word; `nerdctl` is only the CLI binary it is driven through. Use when working
-  with the engine:containerd provider, the plugin-nerdctl candy, or the engine provider-class
+  with the engine:containerd provider, the plugin-containerd candy, or the engine provider-class
   placement model.
 ---
 
-# plugin-nerdctl
+# plugin-containerd
 
 The out-of-tree charly ENGINE plugin serving `engine:containerd` (plus the
 `verb:containerd` / `command:containerd` convenience words).
@@ -55,7 +55,25 @@ mode-split workload users, `address`, `namespace`, `privilege_prefix`,
 `substrates`, `runtime_handlers`) is served by the spec module's engine body —
 one table, no copy here.
 
+## The read-only check verb (`verb:containerd`)
+
+`containerd: <method>` is a READ-ONLY check verb (W3.9). Its typed input is
+`#ContainerdInput` with `method` as the PRIMARY field, so `containerd: info`
+desugars to `{method: "info"}`. It drives the venue's own tooling over the host
+executor reverse channel; each method catches a defect nothing else does:
+
+| method | measures | visible skip (names the mechanism) |
+|---|---|---|
+| `info` | daemon id + mode from `nerdctl info` **SecurityOptions** (never `Plugins`) | — |
+| `runtimes` | the declared CRI handlers (`crictl info`) | `crictl` not installed |
+| `cdi_devices` | devices in the **client's** CDI spec dirs (`/etc/cdi`, `/var/run/cdi`) | — (an absent dir is an empty, passing list; a malformed spec FAILS) |
+| `criu_preflight` | `criu check --unprivileged --feature seccomp_suspend`: rc **and** the supported line; `--extra` is never used | `criu` not installed |
+| `krun_guest` | one throwaway probe guest (`--rm`): kernel, arch, CPU features | no probe `image:`, no `/dev/kvm`, handler not declared |
+| `image` | an image present in a **named** namespace | — |
+
+A skip is never a silent pass: an assertion that cannot run is not green.
+
 ## Use when
 
-Working with the `engine:containerd` provider, the plugin-nerdctl candy, or the
-engine provider-class placement model.
+Working with the `engine:containerd` provider, the `containerd:` check verb, the
+plugin-containerd candy, or the engine provider-class placement model.
