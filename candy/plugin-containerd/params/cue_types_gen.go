@@ -23,10 +23,10 @@ package params
 // retired engine spelling is deleted (R5, no alias).
 type ContainerdPlugin struct {
 	// The engine WORD the plugin serves (the registry key `engine:containerd`).
-	Engine string `json:"engine"`
+	Engine string `yaml:"engine,omitempty" json:"engine"`
 
 	// What the plugin does, in one line (the public-docs surface).
-	Contract string `json:"contract"`
+	Contract string `yaml:"contract,omitempty" json:"contract"`
 
 	// rootful names how this provider implements a rootful start plan: it prefixes
 	// the argv with the capability's `privilege_prefix` (e.g. `sudo -n`), taken from
@@ -35,7 +35,7 @@ type ContainerdPlugin struct {
 	// renders a user unit from the `start_argv` it is given. A rootful unit carries
 	// the prefix and `--runtime` only when the caller passes the rootful start-plan
 	// argv; this provider does not re-apply the policy at the unit boundary.
-	Rootful string `json:"rootful"`
+	Rootful string `yaml:"rootful,omitempty" json:"rootful"`
 }
 
 // #ContainerdInput is the `verb:containerd` check verb's plugin_input: the method
@@ -49,25 +49,25 @@ type ContainerdPlugin struct {
 // runtime handler not declared), never a silent pass.
 type ContainerdInput struct {
 	// method — the containerd assertion to run.
-	Method string `json:"method"`
+	Method string `yaml:"method,omitempty" json:"method"`
 
 	// address — the containerd gRPC address (nerdctl --address). Empty uses the
 	// venue's default.
-	Address string `json:"address,omitempty"`
+	Address string `yaml:"address,omitempty" json:"address,omitempty"`
 
 	// namespace — the containerd namespace (nerdctl --namespace). Empty uses the
 	// venue's default ("default" for nerdctl).
-	Namespace string `json:"namespace,omitempty"`
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
 
 	// image — method:image / method:krun_guest — the image reference to assert
 	// present in the namespace, or the probe image to boot.
-	Image string `json:"image,omitempty"`
+	Image string `yaml:"image,omitempty" json:"image,omitempty"`
 
 	// runtime — method:krun_guest — the OCI runtime handler the probe guest boots
 	// with (default "krun").
-	Runtime string `json:"runtime,omitempty"`
+	Runtime string `yaml:"runtime,omitempty" json:"runtime,omitempty"`
 
 	// spec_dirs — method:cdi_devices — the CLIENT's CDI spec directories. Defaults
 	// to nerdctl's own defaults: /etc/cdi and /var/run/cdi.
-	Spec_dirs []string `json:"spec_dirs,omitempty"`
+	Spec_dirs []string `yaml:"spec_dirs,omitempty" json:"spec_dirs,omitempty"`
 }
